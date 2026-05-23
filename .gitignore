@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# PyInstaller build output
+build/
+dist/
+*.spec.bak
+
+# PDF backups created by the tool
+*.pdf.bak
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
