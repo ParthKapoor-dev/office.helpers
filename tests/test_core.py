@@ -85,16 +85,43 @@ def test_process_folder_multiple_files(tmp_path):
     assert "2.3" in _page_texts(tmp_path / "b_2.pdf")[2]
 
 
-def test_backup_created_when_enabled(tmp_path):
+def test_success_removes_backup(tmp_path):
     _make_pdf(tmp_path / "doc_1.pdf", 1)
-    process_folder(tmp_path, Settings(make_backup=True))
-    assert (tmp_path / "doc_1.pdf.bak").exists()
+    result = process_folder(tmp_path, Settings(make_backup=True))
+
+    assert result.processed == 1
+    # No .bak files anywhere, and the backup/ folder is cleaned up on success.
+    assert list(tmp_path.glob("*.bak")) == []
+    assert not (tmp_path / "backup").exists()
+    assert "1.1" in _page_texts(tmp_path / "doc_1.pdf")[0]
 
 
-def test_no_backup_when_disabled(tmp_path):
+def test_failure_keeps_backup_in_backup_dir(tmp_path, monkeypatch):
+    import tools.pdf_numbering.core as core
+
+    _make_pdf(tmp_path / "doc_1.pdf", 1)
+    original = (tmp_path / "doc_1.pdf").read_bytes()
+
+    def boom(*args, **kwargs):
+        raise OSError("simulated write failure")
+
+    monkeypatch.setattr(core.os, "replace", boom)
+
+    with pytest.raises(OSError):
+        stamp_pdf(tmp_path / "doc_1.pdf", 1, Settings(make_backup=True))
+
+    backup = tmp_path / "backup" / "doc_1.pdf"
+    assert backup.exists()
+    assert backup.read_bytes() == original  # a real, recoverable .pdf copy
+    assert (tmp_path / "doc_1.pdf").read_bytes() == original  # original untouched
+    assert list(tmp_path.glob("tmp*")) == []  # temp file cleaned up
+
+
+def test_no_backup_dir_when_disabled(tmp_path):
     _make_pdf(tmp_path / "doc_1.pdf", 1)
     process_folder(tmp_path, Settings(make_backup=False))
-    assert not (tmp_path / "doc_1.pdf.bak").exists()
+    assert not (tmp_path / "backup").exists()
+    assert list(tmp_path.glob("*.bak")) == []
 
 
 def test_non_matching_pdf_untouched(tmp_path):

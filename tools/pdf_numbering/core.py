@@ -109,6 +109,11 @@ def stamp_pdf(path, chapter: int, settings: Settings) -> int:
     PDFs. Writing is done to a temp file in the same directory followed by an
     atomic ``os.replace`` so a failure can never leave a half-written file in
     place of the original.
+
+    When ``settings.make_backup`` is set, a copy of the original is placed in a
+    ``backup/`` subfolder (as a real ``.pdf`` with the original name) just before
+    the overwrite. The backup is deleted once the file is processed successfully,
+    and kept only if the write fails so the original can be recovered.
     """
     path = Path(path)
 
@@ -135,8 +140,12 @@ def stamp_pdf(path, chapter: int, settings: Settings) -> int:
         overlay_page = PdfReader(BytesIO(overlay_bytes)).pages[0]
         page.merge_page(overlay_page)
 
+    backup_dir = path.parent / "backup"
+    backup_path = None
     if settings.make_backup:
-        shutil.copy2(path, path.with_name(path.name + ".bak"))
+        backup_dir.mkdir(exist_ok=True)
+        backup_path = backup_dir / path.name
+        shutil.copy2(path, backup_path)
 
     fd, tmp_name = tempfile.mkstemp(suffix=".pdf", dir=str(path.parent))
     try:
@@ -146,7 +155,14 @@ def stamp_pdf(path, chapter: int, settings: Settings) -> int:
     except Exception:
         if os.path.exists(tmp_name):
             os.remove(tmp_name)
-        raise
+        raise  # leave backup_path in place for recovery
+
+    if backup_path is not None and backup_path.exists():
+        backup_path.unlink()
+        try:
+            backup_dir.rmdir()  # only succeeds if it is now empty
+        except OSError:
+            pass
 
     return len(writer.pages)
 

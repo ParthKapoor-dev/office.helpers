@@ -33,11 +33,32 @@ Python install required.
 3. Adjust **Settings** if you like:
    - **Number position** — bottom center / bottom right / bottom left / top right.
    - **Font size** and **Margin (pt)**.
-   - **Create .bak backup before overwriting** (on by default).
-4. Click **Start** and confirm.
+   - **Back up each file to `backup/` during processing** (on by default).
+4. Click **Process now** for a one-off run, or enable background mode (below).
 
-> ⚠️ **The matching PDFs are overwritten in place.** Leave the backup option on
-> if you want a `.bak` copy of each original kept alongside it.
+> ⚠️ **The matching PDFs are overwritten in place.**
+
+### Background auto-processing (the agent)
+
+Tick **"Enable background auto-processing (watch this folder)"** and the tool
+keeps watching the chosen folder and numbers PDFs automatically the moment they
+are added or changed — no clicking required.
+
+- It keeps running after you **close the window**, living in the **system tray**
+  (right-click the tray icon for *Open settings / Pause / Process now / Open log
+  / Quit*).
+- It **starts at Windows login** (a shortcut in your Startup folder, no admin),
+  so it's always on. Turn the toggle off to stop it and remove the startup entry.
+- Your folder + settings are **saved** and resume automatically.
+- It never re-numbers a file it already stamped (a per-file fingerprint is kept,
+  even across restarts), so there's no runaway double-numbering.
+
+### Backups
+
+When the backup option is on, each file being processed is first copied into a
+`backup/` subfolder of your folder (a real `.pdf` with the original name). The
+backup is **deleted once that file is processed successfully**, and kept only if
+the write fails so you can recover the original.
 
 ## Run from source
 
@@ -81,12 +102,16 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-All PDF logic lives in `tools/pdf_numbering/core.py` (no GUI imports, fully
-unit-tested). The `tkinter` front-end is in `tools/pdf_numbering/gui.py`.
+Layout (all GUI-free modules are unit-tested):
+- `tools/pdf_numbering/core.py` — stamping logic.
+- `tools/pdf_numbering/watcher.py` — folder watching + idempotent reconcile.
+- `tools/pdf_numbering/config.py` — persisted folder/settings.
+- `tools/pdf_numbering/startup.py` — Windows start-at-login shortcut.
+- `tools/pdf_numbering/gui.py` — tkinter window + system tray.
 
 ### Known limitations
 
-- Scans the selected folder only (not subfolders).
+- Scans the selected folder only (not subfolders); the `backup/` subfolder is ignored.
 - Pages with a `/Rotate` flag may place the number using unrotated coordinates;
   standard (unrotated) PDFs — the common case — work correctly.
 - Encrypted / password-protected PDFs are reported and skipped, not unlocked.
