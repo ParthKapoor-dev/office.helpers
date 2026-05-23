@@ -3,11 +3,10 @@ name: Windows build
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
   pull_request:
 
 permissions:
-  contents: write # required to publish a Release on tag pushes
+  contents: write # required to create the tag + Release
 
 jobs:
   build:
@@ -36,8 +35,32 @@ jobs:
           name: PDF-Page-Numberer
           path: dist/PDF-Page-Numberer.exe
 
-      - name: Publish Release (on version tag)
-        if: startsWith(github.ref, 'refs/tags/v')
+      # --- Release ---------------------------------------------------------
+      # On pushes to main, publish a GitHub Release for the version in the
+      # VERSION file. The Release (and its git tag) are created by the action
+      # using the Actions token, so no manual tag push is needed. Bump VERSION
+      # to cut a new release; existing versions are skipped.
+      - name: Read version
+        if: github.ref == 'refs/heads/main'
+        id: ver
+        shell: bash
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this version was already released
+        if: github.ref == 'refs/heads/main'
+        id: tagcheck
+        shell: bash
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.ver.outputs.version }}" | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish Release
+        if: github.ref == 'refs/heads/main' && steps.tagcheck.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ver.outputs.version }}
+          name: ${{ steps.ver.outputs.version }}
           files: dist/PDF-Page-Numberer.exe

@@ -23,8 +23,8 @@ Grab the latest `PDF-Page-Numberer.exe` from the
 **[Releases](../../releases)** page. It's a single self-contained file — no
 Python install required.
 
-> Each tagged build (`vX.Y.Z`) is compiled **and tested on a Windows runner**
-> by GitHub Actions before the `.exe` is attached to the release.
+> Every push to `main` is compiled **and tested on a Windows runner** by GitHub
+> Actions, which then publishes a Release for the version in the `VERSION` file.
 
 ### Use it
 
@@ -59,6 +59,20 @@ pip install -r requirements-dev.txt
 pyinstaller packaging/pdf_numbering.spec
 # -> dist/PDF-Page-Numberer.exe
 ```
+
+## Cutting a release
+
+Releases are driven by the `VERSION` file (e.g. `v0.1.0`). To publish a new
+one, bump the version and push it to `main`:
+
+```bash
+echo v0.2.0 > VERSION
+git commit -am "Release v0.2.0" && git push origin main
+```
+
+The Windows CI builds + tests the `.exe`, then creates the matching git tag and
+GitHub Release with the binary attached. Versions that already have a Release
+are skipped, so ordinary pushes to `main` don't re-release.
 
 ## Develop / test
 
