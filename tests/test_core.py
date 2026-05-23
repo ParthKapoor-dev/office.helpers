@@ -38,6 +38,8 @@ def _page_texts(path: Path) -> list[str]:
         ("a_b_7.pdf", 7),
         ("file_1.PDF", 1),  # case-insensitive extension
         ("doc_007.pdf", 7),
+        ("test_1.pdf.pdf", 1),  # Windows hidden-extension double .pdf
+        ("test_12.PDF.pdf", 12),
         ("notes.pdf", None),
         ("weird_1x.pdf", None),
         ("nounderscore.pdf", None),
@@ -112,6 +114,19 @@ def test_all_positions_stamp(tmp_path, position):
     pages = stamp_pdf(tmp_path / "p_5.pdf", 5, Settings(position=position, make_backup=False))
     assert pages == 1
     assert "5.1" in _page_texts(tmp_path / "p_5.pdf")[0]
+
+
+def test_double_extension_is_stamped(tmp_path):
+    # Simulates a file created on Windows with "Hide extensions" on, which
+    # turns "doc_4.pdf" into the on-disk name "doc_4.pdf.pdf".
+    _make_pdf(tmp_path / "doc_4.pdf.pdf", 2)
+    result = process_folder(tmp_path, Settings(make_backup=False))
+
+    assert result.processed == 1
+    assert result.skipped == 0
+    texts = _page_texts(tmp_path / "doc_4.pdf.pdf")
+    assert "4.1" in texts[0]
+    assert "4.2" in texts[1]
 
 
 def test_empty_folder(tmp_path):

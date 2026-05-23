@@ -19,8 +19,11 @@ from typing import Callable, List, Optional, Tuple
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 
-# Matches a trailing "_<digits>.pdf" (case-insensitive on the extension).
-CHAPTER_RE = re.compile(r"_(\d+)\.pdf$", re.IGNORECASE)
+# Matches a trailing "_<digits>" followed by one or more ".pdf" extensions
+# (case-insensitive). The repeated extension tolerates the common Windows case
+# where "Hide extensions for known file types" turns name_1.pdf into the
+# on-disk name name_1.pdf.pdf.
+CHAPTER_RE = re.compile(r"_(\d+)(?:\.pdf)+$", re.IGNORECASE)
 
 POSITIONS: Tuple[str, ...] = (
     "bottom-center",
@@ -167,9 +170,18 @@ def process_folder(
     ]
     targets = find_target_pdfs(folder)
     matched_paths = {p for p, _ in targets}
+    skipped_pdfs = [p for p in all_pdfs if p not in matched_paths]
 
     result.total_matched = len(targets)
-    result.skipped = sum(1 for p in all_pdfs if p not in matched_paths)
+    result.skipped = len(skipped_pdfs)
+
+    if skipped_pdfs:
+        log(
+            "Skipped (no _<number> right before .pdf -- check for hidden "
+            "double extensions like name_1.pdf.pdf):"
+        )
+        for path in sorted(skipped_pdfs):
+            log(f"  - {path.name}")
 
     if not targets:
         log("No PDFs matching *_<number>.pdf found in this folder.")
