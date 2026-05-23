@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write # job-level grant for creating the tag + Release
     steps:
       - uses: actions/checkout@v4
 
@@ -59,8 +61,12 @@ jobs:
 
       - name: Publish Release
         if: github.ref == 'refs/heads/main' && steps.tagcheck.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.ver.outputs.version }}
-          name: ${{ steps.ver.outputs.version }}
-          files: dist/PDF-Page-Numberer.exe
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.version }}" \
+            "dist/PDF-Page-Numberer.exe" \
+            --title "${{ steps.ver.outputs.version }}" \
+            --notes "Automated Windows build of ${{ steps.ver.outputs.version }}." \
+            --target "$GITHUB_SHA"
